@@ -1,0 +1,64 @@
+#!/usr/bin/bash
+
+osudir=$HOME/Downloads
+
+# Fetches the AppImage version by extracting version info from osu.Game.dll
+getversion(){
+  coproc ($osudir/osu.AppImage --appimage-mount)
+  read -r mountdir <&"${COPROC[0]}"
+  version=$(strings $mountdir/usr/bin/osu.Game.dll \
+  | egrep '^[0-9]+\.[0-9]+\.[0-9]+$')
+  kill -TERM $COPROC_PID
+}
+
+downloadosu(){
+  printf "Downloading the latest osu.AppImage \n \n"
+  curl -L https://github.com/ppy/osu/releases/latest/download/osu.AppImage \
+  -o $osudir/osu.AppImage
+  chmod +x $osudir/osu.AppImage
+}
+
+runosu(){
+  printf "Starting osu\! $version"
+  mangohud --dlsym $osudir/osu.AppImage &
+  disown
+}
+
+# Fetches the current latest version using curl redirection
+latest=$(curl -Ls -o /dev/null -w %{url_effective} \
+  https://github.com/ppy/osu/releases/latest \
+  | egrep -o '[0-9]+\.[0-9]+\.[0-9]+$')
+
+# Checks if AppImage exists.
+if [[ ! -f $osudir/osu.AppImage ]]
+then
+  printf "Can't find osu.AppImage \n"
+  if [[ $latest == "" ]]
+  then
+    printf "Seems your internet is not working. \n"
+    printf "Exiting. \n"
+    exit
+  else
+    downloadosu
+    getversion
+  fi
+else
+  getversion
+fi
+
+if [[ $latest == "" ]]
+then
+  printf "Seems your internet is not working. \n"
+  printf "Can't check for updates. \n"
+else
+  if [[ $latest != $version ]]
+  then
+    printf "Latest doesn't match with current version. \
+Updating ($version => $latest) \n"
+    downloadosu
+  else
+    printf "osu! seems to be the lastest version. \n"
+  fi
+fi
+
+runosu
