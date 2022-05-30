@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+
+modline=$(( $(awk '/Name=Mouse/{ print NR; exit }' $HOME/.config/khotkeysrc) - 1))
+
+if [[ $(sed -n "${modline}p" $HOME/.config/khotkeysrc | grep true) == "" ]]
+then
+  sed -i "${modline}s/false/true/" $HOME/.config/khotkeysrc
+else
+  sed -i "${modline}s/true/false/" $HOME/.config/khotkeysrc
+fi
+
+dbus-send --type=method_call --dest=org.kde.kded5 /modules/khotkeys org.kde.khotkeys.reread_configuration
